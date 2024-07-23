@@ -5,21 +5,22 @@ import google.generativeai as genai
 
 import assemblyai as aai
 
-aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
+import os
 
 import sounddevice as sd
 import soundfile as sf
 from gtts import gTTS
 
-import PIL.Image
+import PIL.Image, PIL.ImageFile
+
+PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 import threading
 
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
+aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
 
 tello = Tello()
 tello.connect()
@@ -87,6 +88,7 @@ def flip(
 
 
 def what_do_you_see(read_camera_feed: bool = False):
+    tello.query_active()
     if read_camera_feed:
         img = PIL.Image.open("img.jpg")
         try:
@@ -147,7 +149,6 @@ def on_data(transcript: aai.RealtimeTranscript):
 
     if isinstance(transcript, aai.RealtimeFinalTranscript):
         response = chat.send_message(transcript.text)
-        print(response.text)
         SpeakText(response.text)
 
 
@@ -165,16 +166,16 @@ microphone_stream = aai.extras.MicrophoneStream(sample_rate=16_000)
 def camera_feed():
     width = 700
     height = 500
-    while True:
-        frame = tello.get_frame_read().frame
-        frame = cv2.resize(frame, (width, height))
-        cv2.imshow("Drone Camera Feed", frame)
-        cv2.imwrite("img.jpg", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+    try:
+        while True:
+            frame = tello.get_frame_read().frame
+            frame = cv2.resize(frame, (width, height))
+            cv2.imshow("Drone Camera Feed", frame)
+            cv2.imwrite("img.jpg", frame)
+            cv2.waitKey(1000)
+    except KeyboardInterrupt:
+        cv2.destroyAllWindows()
 
-
-# transcriber.stream(microphone_stream)
 
 t1 = threading.Thread(target=transcriber.stream, args=(microphone_stream,))
 t2 = threading.Thread(target=camera_feed)
@@ -182,9 +183,16 @@ t2 = threading.Thread(target=camera_feed)
 t1.start()
 t2.start()
 
-t1.join()
-t2.join()
+try:
+    t1.join()
+    t2.join()
+except KeyboardInterrupt:
+    if os.path.exists("img.jpg"):
+        os.remove("img.jpg")
+    if os.path.exists("transcript.mp3"):
+        os.remove("transcript.mp3")
 
-transcriber.close()
-tello.land()
-tello.end()
+    cv2.destroyAllWindows()
+    transcriber.close()
+    tello.land()
+    tello.end()
