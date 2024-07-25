@@ -15,6 +15,7 @@ import PIL.Image, PIL.ImageFile
 
 PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+import time
 import threading
 
 from dotenv import load_dotenv
@@ -34,44 +35,55 @@ tello.streamon()
 def takeoff_land(takeoff: bool = False, land: bool = False):
     if takeoff:
         tello.takeoff()
+        return "I'm in the air!"
     if land:
         tello.land()
+        return "Landed."
 
 
-def move_forward(distance: float = 20):
-    tello.move_forward(int(distance))
+def move_forward(forward: bool = False):
+    if forward:
+        tello.move_forward(x=30)
 
 
-def move_backward(distance: float = 20):
-    tello.move_back(int(distance))
+def move_backward(backward: bool = False):
+    if backward:
+        tello.move_back(x=30)
 
 
-def move_left(distance: float = 20):
-    tello.move_left(int(distance))
+def move_left(left: bool = False):
+    if left:
+        tello.move_left(x=30)
 
 
-def move_right(distance: float = 20):
-    tello.move_right(int(distance))
+def move_right(right: bool = False):
+    if right:
+        tello.move_right(x=30)
 
 
-def move_up(distance: float = 20):
-    tello.move_up(int(distance))
+def move_up(up: bool = False):
+    if up:
+        tello.move_up(x=30)
 
 
-def move_down(distance: float = 20):
-    tello.move_down(int(distance))
+def move_down(down: bool = False):
+    if down:
+        tello.move_down(x=30)
 
 
 def rotate_clockwise(angle: float = 90):
-    tello.rotate_clockwise(int(angle))
+    angle = int(angle)
+    tello.rotate_clockwise(angle)
 
 
 def rotate_counterclockwise(angle: float = 90):
-    tello.rotate_counter_clockwise(int(angle))
+    angle = int(angle)
+    tello.rotate_counter_clockwise(angle)
 
 
 def turn_around(angle: float = 180):
-    tello.rotate_clockwise(int(angle))
+    angle = int(angle)
+    tello.rotate_clockwise(angle)
 
 
 def flip(
@@ -105,6 +117,12 @@ def what_do_you_see(read_camera_feed: bool = False):
             return "I'm sorry, I can't see anything right now."
 
 
+def take_picture(take_picture: bool = False):
+    if take_picture and os.path.exists("img.jpg"):
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        os.rename("img.jpg", f"{timestamp}.jpg")
+
+
 functions = {
     "takeoff_land": takeoff_land,
     "move_forward": move_forward,
@@ -118,6 +136,7 @@ functions = {
     "turn_around": turn_around,
     "flip": flip,
     "what_do_you_see": what_do_you_see,
+    "take_picture": take_picture,
 }
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -125,12 +144,15 @@ model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     tools=functions.values(),
     system_instruction="You are an AI assistant in a autonomous drone. You can control the drone by setting boolean values for the following parameters: \
-          takeoff, land, left, right, forward, back, up, down, clockwise, counter_clockwise. \
-            When asked what do you see, you can describe the image from the drone camera feed with the what_do_you_see function. \
-                You were built by Britny. \
-                    Britny considers you as a friend and is excited to see what you can do. \
-                        You are currently operating the drone, and Britny is with you. \
-                            Try to keep your responses short and concise, and avoid use of emoji's.",
+          takeoff, land, left, right, forward, back, up, down, flip. \
+            You can set the angle for the drone to rotate clockwise, counter clockwise, or turn around by setting integer values. \
+                If an angle is not specified, use the default angles in the functions. \
+                    You can take a picture with the take_picture function. \
+                        When asked what do you see, you can describe the image from the drone camera feed with the what_do_you_see function. \
+                            You were built by Britny. \
+                                Britny considers you as a friend and is excited to see what you can do. \
+                                    You are currently operating the drone, and Britny is with you. \
+                                        Try to keep your responses short and concise, and avoid use of emoji's.",
 )
 chat = genai.ChatSession(model=model, enable_automatic_function_calling=True)
 
